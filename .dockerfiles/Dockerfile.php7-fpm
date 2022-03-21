@@ -1,0 +1,114 @@
+FROM php:7.3-fpm
+
+RUN apt-get update --fix-missing
+
+# Install iconv, mcryot, gd, soap
+RUN apt-get install -y \
+        libgd-dev \
+        libfreetype6-dev \
+        libjpeg-dev \
+        libjpeg62-turbo-dev \
+        libpng-dev \
+        git \
+        nano \
+        default-mysql-client \
+    && docker-php-ext-configure gd --with-freetype-dir=/usr/lib/x86_64-linux-gnu/ --with-jpeg-dir=/usr/include/ \
+    && docker-php-ext-install -j$(nproc) iconv \
+    && docker-php-ext-install -j$(nproc) gd
+
+# PHP 7.3 mcrypt
+RUN apt-get install -y \
+    libmcrypt-dev \
+    && pecl install mcrypt-1.0.2 \
+    && docker-php-ext-enable mcrypt
+
+# Install memcached
+RUN apt-get install -y libmemcached-dev \
+  && pecl install memcached \
+  && docker-php-ext-enable memcached
+
+# Install intl
+RUN apt-get install -y libicu-dev \
+    && docker-php-ext-configure intl \
+    && docker-php-ext-install intl
+
+# Install xsl
+RUN apt-get install -y libxslt-dev \
+    && docker-php-ext-configure xsl \
+    && docker-php-ext-install xsl
+
+# Install mbstring
+RUN docker-php-ext-install mbstring
+
+# Install curl
+RUN apt-get install -y libcurl4-openssl-dev \
+    && docker-php-ext-install curl
+
+# Install nodejs, npm
+RUN apt-get install -y gnupg \
+ && curl -sL https://deb.nodesource.com/setup_10.x | bash - \
+ && apt-get install -y nodejs
+
+# Install zip
+RUN apt-get install -y libzip-dev \
+    && docker-php-ext-install zip
+
+# Install json
+RUN docker-php-ext-install json
+
+# Install extensions through the scripts the container provides
+# Here we install the pdo_mysql extensions to access MySQL.
+RUN docker-php-ext-install pdo_mysql
+
+# Mysqli
+RUN docker-php-ext-install mysqli
+
+# Install soap
+# https://github.com/docker-library/wordpress/issues/102
+RUN apt-get install -y \
+        libxml2-dev \
+    && apt-get clean -y \
+    && docker-php-ext-install soap \
+    && docker-php-ext-enable soap
+
+# Install bcmath
+RUN docker-php-ext-configure bcmath \
+    && docker-php-ext-install bcmath
+
+# Install xdebug
+RUN pecl install xdebug \
+    && echo "zend_extension=$(find /usr/local/lib/php/extensions/no-debug-non-zts-20180731/ -name xdebug.so)" > /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo 'xdebug.idekey = "PHPSTORM"' >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo 'xdebug.default_enable=0' >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo 'xdebug.remote_enable=1' >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo 'xdebug.remote_autostart=0' >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo 'xdebug.remote_connect_back=0' >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo 'xdebug.profiler_enable=0' >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo 'xdebug.remote_host=10.254.254.254' >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo 'xdebug.remote_port=9000' >> /usr/local/etc/php/conf.d/xdebug.ini \
+    && echo 'xdebug.remote_log = "/tmp/xdebug.log"' >> /usr/local/etc/php/conf.d/xdebug.ini
+
+RUN usermod -u 1000 www-data
+RUN echo 'date.timezone="GMT"' >> /usr/local/etc/php/conf.d/date.ini
+RUN echo 'opcache.enable=1' >> /usr/local/etc/php/conf.d/opcache.conf
+RUN echo 'opcache.validate_timestamps=0' >> /usr/local/etc/php/conf.d/opcache.conf
+RUN echo 'opcache.fast_shutdown=1' >> /usr/local/etc/php/conf.d/opcache.conf
+
+RUN echo 'max_execution_time=1800' >> /usr/local/etc/php/conf.d/uploads.ini
+RUN echo 'max_input_time=60' >> /usr/local/etc/php/conf.d/uploads.ini
+RUN echo 'memory_limit=4G' >> /usr/local/etc/php/conf.d/uploads.ini
+RUN echo 'upload_max_filesize=256M' >> /usr/local/etc/php/conf.d/uploads.ini
+
+
+WORKDIR /var/www/html
+RUN rm -rf /var/www/html/*
+
+# Install sqlite extension
+RUN apt-get install -y libsqlite3-dev \
+    && docker-php-ext-install pdo_sqlite
+
+# Sockets
+RUN docker-php-ext-install sockets
+
+# Install Composer and make it available in the PATH
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin/ --filename=composer --version=1.10.20

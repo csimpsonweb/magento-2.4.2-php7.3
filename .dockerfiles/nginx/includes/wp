@@ -1,0 +1,15 @@
+# Wordpress
+
+location ~* ^/wp($|/) {
+
+    root /var/www/html;
+
+    index index.php;
+
+    try_files $uri $uri/ /wp/index.php?$args;
+
+    location ~ \.php$ {
+        include         /etc/nginx/includes/fastcgi;
+    }
+
+}

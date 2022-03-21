@@ -1,0 +1,84 @@
+version: "3"
+services:
+    nginx:
+        build:
+            context: ./.dockerfiles
+            dockerfile: Dockerfile.nginx
+        ports:
+            - "8080:8080"
+            - "443:443"
+        volumes:
+            - ./.logs/nginx:/var/log/nginx
+            - ./.dockerfiles/nginx/ssl:/etc/nginx/ssl
+            - ./.dockerfiles/nginx/includes:/etc/nginx/includes
+            - ./.dockerfiles/nginx/sites-enabled:/etc/nginx/conf.d
+            - ./:/var/www/html
+        links:
+            - php7-fpm
+    php7-fpm:
+        build:
+            context: ./.dockerfiles
+            dockerfile: Dockerfile.php7-fpm
+        ports:
+            - 9000
+        volumes:
+            - ./:/var/www/html
+        links:
+            - mysql
+        environment:
+            PHP_XDEBUG_ENABLED: 0
+
+    mysql:
+        image: mariadb:10.4
+        ports:
+            - "3306:3306"
+        environment:
+            MYSQL_ROOT_PASSWORD: magento
+            MYSQL_DATABASE: magento2_4_2
+            MYSQL_USER: magento
+            MYSQL_PASSWORD: magento
+        volumes:
+            - ./.mysql:/var/lib/mysql
+            - ./.dockerfiles/mysql/conf.d:/etc/mysql/conf.d
+
+    elasticsearch:
+        build:
+            context: ./.dockerfiles
+            dockerfile: Dockerfile.elasticsearch
+        environment:
+            - bootstrap.memory_lock=true
+            - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+        ulimits:
+            memlock:
+                soft: -1
+                hard: -1
+        volumes:
+            - ./.elasticsearch:/usr/share/elasticsearch/data
+        ports:
+            - "9200:9200"
+
+    #rabbit:
+        #image: rabbitmq:3
+        #ports:
+            #- "5672:5672"
+            #- "15672:15672"
+        #volumes:
+            #- ./.rabbitmq:/var/lib/rabbitmq
+            #- ./.dockerfiles/rabbitmq:/etc/rabbitmq
+
+    #redis:
+       # image: redis:6
+       # ports:
+            #- "6379:6379"
+       # environment:
+       #     ALLOW_EMPTY_PASSWORD: 1
+
+    #varnish:
+       # image: varnish:6.5.1
+        #ports:
+         #   - "80:6081"
+         #   - "6085:6085"
+       # volumes:
+         #   - ./.varnish:/etc/varnish
+       # environment:
+            #VARNISH_SIZE: 1G
